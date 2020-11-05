@@ -1,0 +1,145 @@
+<template>
+   <div class="col s12 offset-m2 m8 offset-xl3 xl6">
+
+      <h2 class="title">Локации объекта {{$store.state.objectInfo.object_name}}</h2>
+      <Loader size="big" v-show="loading"/>
+      <h2 class="warn" v-show="!loading" v-if="empty_response">У вас нет созданных локаций</h2>
+      <section class="s-locations" v-else v-show="!loading">
+         <p class="center">Выберите локацию и укажите выполненные работы</p>
+         <table class="highlight">
+            <thead>
+            <tr>
+               <th>Название</th>
+               <th>Ценовая категория</th>
+               <th>Материалы</th>
+            </tr>
+            </thead>
+
+            <tbody>
+            <tr
+               v-for="(location,index) in locations"
+               :key="index"
+               @click="selectLocation(location)">
+               <td>{{location.title}}</td>
+               <td>{{location.technology_pricing_policy}}</td>
+               <td>{{location.materials_pricing_policy}}</td>
+            </tr>
+            </tbody>
+
+         </table>
+
+
+         <div class="input-field">
+            <button @click.prevent="downloadAct" class="btn btn-dark lighten-1 waves-effect waves-light">
+               Скачать акт выполненных работ
+            </button>
+         </div>
+
+         <div class="input-field">
+            <button
+               @click.prevent="$router.push({name:'delivery-of-building-materials'})"
+               class="btn btn-large btn-standard red accent-1  waves-effect waves-light"
+               type="submit">
+               Перейти в доставку
+            </button>
+         </div>
+
+      </section>
+   </div>
+</template>
+
+<script>
+
+   export default {
+      name: "act-of-completed-work",
+      data: () => ({
+         empty_response: true,
+         loading: true,
+         locations: [],
+      }),
+      created() {
+         try {
+            this.$store.dispatch('waitToken', this.getLocations)
+         } catch (e) {
+            console.log(e)
+         }
+      },
+      methods: {
+         async getLocations() {
+            this.locations = []
+
+            await this.$http.get('wp/v2/additional-documentation/act-of-completed-work', {
+               params: {
+                  // user_id: this.$store.state.auth.userId,
+                  object_id: this.$route.params.id
+               }
+            })
+               .then(response => response.json())
+               .then(response => {
+                  console.log('in', response)
+                  // если данных нет
+                  if (response.length === 0) {
+                     this.empty_response = true
+                     this.loading = false
+                  } else {
+                     this.empty_response = false
+                     this.locations = response
+                     this.loading = false
+                  }
+               })
+               .catch(function (e) {
+                  throw e;
+               })
+         },
+         // запомнить имя локации, по который призведен клик
+         selectLocation(location) {
+            this.$store.commit('setLocationName', location.title)
+            this.$router.push(`/in-work/object-information/${this.$route.params.id}/accompanying-documentation-in-work/additional-documentation/act-of-completed-work/`+location.id)
+         },
+         downloadAct() {
+            this.$message('Скачивается акт выполненных работ');
+            location.href = `${this.$http.options.root}/wp/v2/document/download-act-of-completed-work?user_id=${this.$store.state.auth.userId}&object=${this.$route.params.id}`;
+         }
+      },
+      mounted() {
+         console.log('Act-of-completed-work.vue');
+         this.$store.commit('change_headerNav', {
+            text: 'Создание АВР',
+            colorNav: 'red',
+            colorHome: 'black',
+            colorText: 'black'
+         });
+      }
+   }
+</script>
+
+<style lang="scss" scoped>
+   .warn {
+      color: #ff2626;
+      font-size: 26px;
+      text-align: center;
+   }
+
+   table {
+      thead {
+         background-color: #E4E8EB;
+
+         th {
+            border-radius: 0;
+            text-align: center;
+         }
+      }
+
+      tr {
+         cursor: pointer;
+      }
+
+      td {
+         font-size: 14px;
+      }
+
+      td:last-child {
+         padding: 0;
+      }
+   }
+</style>
